@@ -1,5 +1,5 @@
 [project]
-name = "fast-crawler"
+name = "website-archiver"
 version = "0.1.0"
 description = "A multithreaded website archiver"
 readme = "README.md"
