@@ -8,3 +8,40 @@ dependencies = [
     "requests>=2.34.2",
     "rich>=15.0.0",
 ]
+
+[dependency-groups]
+dev = [
+    "poethepoet>=0.46.0",
+    "pre-commit>=4.6.0",
+    "pyright>=1.1.410",
+    "ruff>=0.15.16",
+]
+
+[tool.poe.tasks]
+start = "uv run -m src"
+set-dev = "pre-commit install"
+pre-commit = "pre-commit run --all-files"
+check = "ruff check ./src"
+check-fix = "ruff check ./src --fix"
+format = "ruff format ./src"
+types = "pyright"
+
+[tool.ruff]
+include = ["src/**"]
+line-length = 120
+format.quote-style = "double"
+format.indent-style = "space"
+lint.preview = true
+lint.select = ["ALL"]
+
+[tool.pyright]
+include = ["src"]
+venv = ".venv"
+venvPath = "."
+typeCheckingMode = "strict"
+reportIncompatibleMethodOverride = "error"
+reportMissingParameterType = "error"
+reportMissingTypeArgument = "error"
+reportUnknownParameterType = "error"
+reportUnknownArgumentType = "error"
+reportUnknownVariableType = "error"
