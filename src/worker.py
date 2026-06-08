@@ -1,3 +1,21 @@
+# Copyright (C) 2026 Lucas Dias
+
+"""Worker module for the Website Archiver.
+
+This module implements the low-level crawling and download logic executed by
+worker threads. It is responsible for retrieving resources, saving content,
+discovering new URLs, and coordinating queue-based crawl execution.
+
+Key responsibilities:
+- Fetch resources from remote servers
+- Download and persist website content
+- Discover and normalize URLs from textual resources
+- Apply whitelist and blacklist filtering rules
+- Manage per-thread HTTP sessions
+- Retry failed requests and handle network errors
+- Update crawler progress and runtime logs
+"""
+
 import html
 import http
 import queue
@@ -11,17 +29,52 @@ import requests.adapters
 
 from src.config_loader import Config
 from src.logger import Logger
-from src.ui import UI
+from src.user_interface import UserInterface
 
 
 class ThreadLocal(threading.local):
+    """Thread-local storage container.
+
+    This class stores per-thread resources used by worker instances. It is
+    currently used to maintain a dedicated HTTP session for each thread,
+    allowing connection reuse while avoiding cross-thread session sharing.
+    """
+
     session: requests.Session | None = None
 
 
 class Worker:
+    """Crawling worker responsible for processing queued URLs.
+
+    This class encapsulates all operations required to process a single crawl
+    task, including downloading resources, saving content, discovering new
+    links, and updating application state. Worker instances are executed by
+    multiple threads concurrently and share crawl coordination structures such
+    as the URL queue and visited URL registry.
+
+    The worker is intended to be managed by the crawler engine and should not
+    be used directly as a standalone component.
+    """
+
     __thread_local = ThreadLocal()
 
-    def __init__(self, config: Config, logger: Logger, ui: UI) -> None:
+    def __init__(self, config: Config, logger: Logger, ui: UserInterface) -> None:
+        """Initialize the worker.
+
+        Loads crawler configuration, initializes shared services, and obtains a
+        thread-local HTTP session for future network operations.
+
+        Args:
+            config (Config):
+                Application configuration containing crawler settings.
+
+            logger (Logger):
+                Logging service used to record runtime events.
+
+            ui (UI):
+                User interface used to display task progress.
+
+        """
         self.__output_folder = config.output_folder
         self.__max_retries = config.max_worker_retries
         self.__urls_blacklist = config.urls_blacklist
@@ -34,6 +87,23 @@ class Worker:
         self.__session = self.__get_session()
 
     def job(self, url_queue: queue.Queue[str | None], visited: set[str], lock: threading.Lock) -> None:
+        """Process crawl tasks from the shared URL queue.
+
+        Continuously retrieves URLs from the queue and processes them until a
+        shutdown sentinel is received. Failed requests are retried according to
+        the configured retry policy.
+
+        Args:
+            url_queue (queue.Queue[str | None]):
+                Shared queue containing URLs to process.
+
+            visited (set[str]):
+                Registry of URLs already discovered during the crawl.
+
+            lock (threading.Lock):
+                Synchronization primitive used when modifying shared state.
+
+        """
         while True:
             # Tries to get any new task
             try:
@@ -60,7 +130,8 @@ class Worker:
                     if retry_count < self.__max_retries:
                         # If another retry is available
                         self.__logger.log(
-                            f"[RETRY] {retry_count + 1}/{self.__max_retries} {url}: {e}", msg_type="warning"
+                            f"[RETRY] {retry_count + 1}/{self.__max_retries} {url}: {e}",
+                            msg_type="warning",
                         )
                         self.__ui.update_task(url, status=f"Retrying {retry_count + 1}/{self.__max_retries}")
 
@@ -244,6 +315,20 @@ class Worker:
 
     @staticmethod
     def normalize_url(url: str) -> str:
+        """Normalize a URL into a canonical form.
+
+        Normalization includes path decoding, directory-path normalization,
+        path re-encoding, and removal of query parameters and fragments.
+
+        Args:
+            url (str):
+                URL to normalize.
+
+        Returns:
+            str:
+                Normalized URL.
+
+        """
         parsed = urllib.parse.urlparse(url)
 
         # Decode path (%20 -> space)

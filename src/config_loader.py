@@ -1,3 +1,20 @@
+# Copyright (C) 2026 Lucas Dias
+
+"""Configuration loading module for the Website Archiver.
+
+This module defines the application's runtime configuration schema and
+provides a command-line based configuration loader.
+
+Key responsibilities:
+- Define the immutable `Config` dataclass used across the application
+- Parse and validate CLI arguments via `argparse`
+- Compile and normalize configurated values (URLs, filenames, MIME types)
+- Provide a single source of truth for crawler execution parameters
+
+This module is designed to be imported early in the application lifecycle
+and used to bootstrap all other resources.
+"""
+
 import argparse
 import dataclasses
 import pathlib
@@ -8,6 +25,45 @@ from src.worker import Worker
 
 @dataclasses.dataclass(frozen=True)
 class Config:
+    """Immutable configuration object describing crawler runtime settings.
+
+    Attributes:
+        url:
+            Root URL used as the starting point for the crawl process.
+
+        output_folder:
+            Filesystem path where downloaded website content is stored.
+
+        logs_folder:
+            Filesystem path where runtime logs are written.
+
+        urls_blacklist:
+            Tuple of compiled regular expressions representing URL patterns that
+            must be excluded from crawling.
+
+        urls_whitelist:
+            Tuple of compiled regular expressions representing URL patterns that
+            are allowed to be crawled (subject to blacklist overrides).
+
+        max_crawler_workers:
+            Maximum number of concurrent crawler worker threads/processes.
+
+        max_worker_retries:
+            Number of retry attempts allowed for failed crawling tasks.
+
+        filename_invalid_chars_pattern:
+            Regular expression used to match characters that must be sanitized
+            before being used in filesystem filenames.
+
+        search_url_pattern:
+            Regular expression used to extract URLs from textual content.
+
+        valid_textual_mime_types:
+            Tuple of MIME type prefixes/values treated as textual content for
+            link extraction and parsing.
+
+    """
+
     url: str
     output_folder: pathlib.Path
     logs_folder: pathlib.Path
@@ -21,7 +77,15 @@ class Config:
 
 
 class ConfigLoader:
+    """Command-line configuration loader for the Website Archiver crawler.
+
+    This class is responsible for defining CLI arguments, parsing user input,
+    and producing a validated immutable `Config` object used throughout the
+    application lifecycle.
+    """
+
     def __init__(self) -> None:
+        """Initialize the CLI argument parser and immediately parse user-provided arguments into a Config object."""
         # Argument parser for all parameters available for user via CLI
         self.__parser = argparse.ArgumentParser(
             prog="Website Archiver",
@@ -140,4 +204,12 @@ class ConfigLoader:
         self.__config = Config(**vars(self.__parser.parse_args()))
 
     def get_config(self) -> Config:
+        """Return the parsed crawler configuration.
+
+        Returns:
+            Config:
+                Immutable configuration object containing all CLI-provided
+                and default crawler settings.
+
+        """
         return self.__config
