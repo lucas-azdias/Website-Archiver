@@ -2,30 +2,37 @@ name: Build
 
 on:
     push:
-        branches:
-            - main
-    pull_request:
-        branches:
-            - main
+        tags:
+            - "v*.*.*"
+
+permissions:
+    contents: write
 
 jobs:
     build:
-        name: "Building"
+        name: Building
 
         strategy:
             matrix:
-                os: [ubuntu-latest, windows-latest, macos-latest]
+                include:
+                    - os: macos-latest
+                      arch: arm64
+                    - os: ubuntu-latest
+                      arch: x64
+                    - os: windows-latest
+                      arch: x64
 
         runs-on: ${{ matrix.os }}
 
         steps:
-            - uses: actions/checkout@v6
+            - name: Doing checkout
+              uses: actions/checkout@v6
 
-            - name: Set up Python
+            - name: Setting up Python
               uses: actions/setup-python@v6
               with:
-                  python-version: "3.12"
-                  architecture: "x64"
+                  python-version: 3.12
+                  architecture: ${{ matrix.arch }}
 
             - name: Installing dependencies
               run: |
@@ -33,16 +40,48 @@ jobs:
                   uv export --no-dev -o requirements.txt
                   pip install -r requirements.txt
 
-            - uses: Nuitka/Nuitka-Action@v1.4
+            - name: Compiling
+              uses: Nuitka/Nuitka-Action@v1.4
               with:
                   script-name: src
                   mode: onefile
                   python-flag: -m
 
-            - name: Upload Artifacts
+            - name: Preparing binary
+              shell: bash
+              run: |
+                  mkdir -p dist
+
+                  VERSION="${GITHUB_REF_NAME#v}"
+                  OS="$(echo '${{ runner.os }}' | tr '[:upper:]' '[:lower:]')"
+                  ARCH="${{ matrix.arch }}"
+
+                  EXT=$([ "${{ runner.os }}" = "Windows" ] && echo exe || echo bin)
+
+                  cp build/src.${EXT} "dist/WebsiteArchiver-${VERSION}-${OS}-${ARCH}.${EXT}"
+
+            - name: Uploading artifacts
               uses: actions/upload-artifact@v7
               with:
-                  name: ${{ runner.os }} Build
+                  name: WebsiteArchiver-${{ runner.os }}-${{ matrix.arch }}
                   path: |
-                      build/src.exe
-                      build/src.bin
+                      dist/*
+
+    release:
+        name: Release
+        needs: build
+
+        runs-on: ubuntu-latest
+
+        steps:
+            - name: Downloading artifacts
+              uses: actions/download-artifact@v8
+              with:
+                  path: dist
+
+            - name: Creating release
+              uses: softprops/action-gh-release@v3
+              with:
+                  files: dist/**/*
+                  make_latest: true
+                  generate_release_notes: true

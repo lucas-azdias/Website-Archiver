@@ -1,0 +1,34 @@
+changelog:
+    categories:
+        - title: Breaking Changes 💥
+          labels:
+              - breaking-change
+
+        - title: New Features 🎉
+          labels:
+              - feature
+              - enhancement
+
+        - title: Bug Fixes 🐛
+          labels:
+              - bug
+              - fix
+
+        - title: Documentation 📚
+          labels:
+              - documentation
+
+        - title: Maintenance 🔧
+          labels:
+              - dependencies
+              - ci
+              - chore
+
+        - title: Other Changes 🔄
+          labels:
+              - "*"
+
+template: |
+    ## 🚀 Release $RESOLVED_VERSION
+
+    $CHANGES
