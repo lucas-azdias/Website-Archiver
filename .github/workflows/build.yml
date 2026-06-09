@@ -1,0 +1,48 @@
+name: Build
+
+on:
+    push:
+        branches:
+            - main
+    pull_request:
+        branches:
+            - main
+
+jobs:
+    build:
+        name: "Building"
+
+        strategy:
+            matrix:
+                os: [ubuntu-latest, windows-latest, macos-latest]
+
+        runs-on: ${{ matrix.os }}
+
+        steps:
+            - uses: actions/checkout@v6
+
+            - name: Set up Python
+              uses: actions/setup-python@v6
+              with:
+                  python-version: "3.12"
+                  architecture: "x64"
+
+            - name: Installing dependencies
+              run: |
+                  pip install uv
+                  uv export --no-dev -o requirements.txt
+                  pip install -r requirements.txt
+
+            - uses: Nuitka/Nuitka-Action@v1.4
+              with:
+                  script-name: src
+                  mode: onefile
+                  python-flag: -m
+
+            - name: Upload Artifacts
+              uses: actions/upload-artifact@v7
+              with:
+                  name: ${{ runner.os }} Build
+                  path: |
+                      build/src.exe
+                      build/src.bin

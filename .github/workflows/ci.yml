@@ -7,19 +7,27 @@ on:
     pull_request:
         branches:
             - main
+            - develop
 
 jobs:
     test:
         name: "Testing"
+
         runs-on: ubuntu-latest
+
         steps:
-            - uses: actions/checkout@v5
+            - uses: actions/checkout@v6
+
+            - name: Set up Python
+              uses: actions/setup-python@v6
+              with:
+                  python-version: "3.12"
 
             - name: Installing dependencies
               run: |
                   pip install uv
-                  uv sync --dev
-                  uv run poe set-dev
+                  uv export -o requirements.txt
+                  pip install -r requirements.txt
 
             - name: Validating typing
               run: uv run poe types
