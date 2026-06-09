@@ -50,6 +50,9 @@ class Logger:
         self.__logs_path = logs_path
         self.__console = console
 
+        # Guarantees the logs folder exists
+        self.__logs_path.mkdir(parents=True, exist_ok=True)
+
         logging.basicConfig(
             filename=self.__generate_log_path(),
             level=logging.INFO,

@@ -20,9 +20,9 @@ import urllib.parse
 
 from rich.console import Console
 
-from src.config_loader import Config
-from src.logger import Logger
-from src.user_interface import UserInterface
+from src.config.config_dto import ConfigDTO
+from src.display.logger import Logger
+from src.display.user_interface import UserInterface
 from src.worker import Worker
 
 
@@ -33,17 +33,17 @@ class Crawler:
     controls the crawler execution lifecycle.
 
     The crawler acts as the central coordinator between:
-    - Configuration (Config)
+    - Configuration (ConfigDTO)
     - Logging system (Logger)
     - User interface (UI)
     - Worker execution pool (Worker)
     """
 
-    def __init__(self, config: Config, logger: Logger, console: Console) -> None:
+    def __init__(self, config: ConfigDTO, logger: Logger, console: Console) -> None:
         """Initialize the crawler and validate output environment.
 
         Args:
-            config (Config):
+            config (ConfigDTO):
                 Application configuration containing crawling parameters.
 
             logger (Logger):
@@ -63,7 +63,7 @@ class Crawler:
         self.__output_folder = config.output_folder
         self.__max_workers = config.max_crawler_workers
         self.__logger = logger
-        self.__ui = UserInterface(console)
+        self.__ui = UserInterface(config, console)
         self.__worker = Worker(config, logger, self.__ui)
 
         # Checks for existence of a host named folder inside output folder
@@ -78,11 +78,9 @@ class Crawler:
         launches the crawling thread, and keeps the main thread alive until
         completion or interruption.
         """
-        url_queue: queue.Queue[str | None] = queue.Queue()
-
         try:
             with self.__ui:
-                t = threading.Thread(target=self.crawl, args=(url_queue,))
+                t = threading.Thread(target=self.crawl)
                 t.start()
 
                 while t.is_alive():
@@ -91,19 +89,15 @@ class Crawler:
         except KeyboardInterrupt:
             self.__logger.log("[CTRL+C] Shutdown signal sent.", msg_type="warning", should_print=True)
 
-    def crawl(self, url_queue: queue.Queue[str | None]) -> None:
+    def crawl(self) -> None:
         """Core crawling routine executed in a dedicated thread.
 
         This method initializes worker threads, seeds the URL queue with the
         starting URL, and coordinates the lifecycle of the crawling process.
-
-        Args:
-            url_queue (queue.Queue[str | None]):
-                Shared queue used to distribute URLs to worker threads.
-                A value of `None` is used as a sentinel to signal shutdown.
-
         """
+        url_queue: queue.Queue[str | None] = queue.Queue()
         visited: set[str] = set()
+        lock = threading.Lock()
 
         # Register starting URL
         url_queue.put(self.__starting_url)
@@ -111,7 +105,8 @@ class Crawler:
 
         # Initializes every job
         jobs: list[threading.Thread] = [
-            threading.Thread(target=self.__worker.job, daemon=True) for _ in range(self.__max_workers)
+            threading.Thread(target=self.__worker.job, args=(url_queue, visited, lock), daemon=True)
+            for _ in range(self.__max_workers)
         ]
 
         # Starts every job

@@ -3,9 +3,17 @@ __pycache__/
 .ruff_cache/
 *.py[oc]
 build/
+*.build/
+onefile-build/
+*.onefile-build/
 dist/
+*.dist/
 wheels/
 *.egg-info
+*.exe
+*.cmd
+*.spec
+*.xml
 
 # Virtual environments
 .venv

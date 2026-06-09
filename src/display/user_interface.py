@@ -19,6 +19,7 @@ tracking URL-specific download progress.
 """
 
 import types
+import typing
 import urllib.parse
 
 from rich.console import Console
@@ -32,7 +33,7 @@ from rich.progress import (
     TransferSpeedColumn,
 )
 
-from src.config_loader import ConfigLoader
+from src.config.config_dto import ConfigDTO
 
 
 class UserInterface:
@@ -47,18 +48,21 @@ class UserInterface:
     consistent real-time visibility into download status and progress.
     """
 
-    def __init__(self, console: Console) -> None:
+    def __init__(self, config: ConfigDTO, console: Console) -> None:
         """Initialize the user interface.
 
         Creates and configures the Rich progress display used to visualize
         crawler activity and download progress.
 
         Args:
+            config (ConfigDTO):
+                Application configuration containing starting crawling parameters.
+
             console (Console):
                 Rich console instance used for rendering progress output.
 
         """
-        self.__starting_url = ConfigLoader().get_config().url
+        self.__starting_url = config.url
 
         self.__url_to_task: dict[str, TaskID] = {}
 
@@ -69,7 +73,7 @@ class UserInterface:
             DownloadColumn(),
             TransferSpeedColumn(),
             TimeRemainingColumn(),
-            TextColumn("{task.fields[url]:.80s}"),
+            TextColumn("{task.fields[url]}"),
             console=console,
         )
 
@@ -118,7 +122,7 @@ class UserInterface:
         task_id = self.__progress.add_task(
             f"worker_task[{url}]",
             status=status,
-            url_display=self.__format_display_urlpath(url),
+            url=self.__format_display_urlpath(url),
             total=1,
             completed=0,
         )
@@ -154,12 +158,18 @@ class UserInterface:
                 Increment to apply to the completed amount.
 
         """
+        kwargs: dict[str, typing.Any] = {
+            "total": total,
+            "completed": completed,
+            "advance": advance,
+        }
+
+        if status is not None:
+            kwargs["status"] = status
+
         self.__progress.update(
             self.__url_to_task[url],
-            status=status,
-            total=total,
-            completed=completed,
-            advance=advance,
+            **kwargs,
         )
 
     def remove_task(self, url: str) -> None:

@@ -24,9 +24,9 @@ This file should be executed directly as the program entry point.
 
 from rich.console import Console
 
-from src.config_loader import ConfigLoader
+from src.config.config_loader import ConfigLoader
 from src.crawler import Crawler
-from src.logger import Logger
+from src.display.logger import Logger
 
 
 def main() -> None:

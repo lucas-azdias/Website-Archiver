@@ -27,9 +27,9 @@ import urllib.parse
 import requests
 import requests.adapters
 
-from src.config_loader import Config
-from src.logger import Logger
-from src.user_interface import UserInterface
+from src.config.config_dto import ConfigDTO
+from src.display.logger import Logger
+from src.display.user_interface import UserInterface
 
 
 class ThreadLocal(threading.local):
@@ -58,14 +58,14 @@ class Worker:
 
     __thread_local = ThreadLocal()
 
-    def __init__(self, config: Config, logger: Logger, ui: UserInterface) -> None:
+    def __init__(self, config: ConfigDTO, logger: Logger, ui: UserInterface) -> None:
         """Initialize the worker.
 
         Loads crawler configuration, initializes shared services, and obtains a
         thread-local HTTP session for future network operations.
 
         Args:
-            config (Config):
+            config (ConfigDTO):
                 Application configuration containing crawler settings.
 
             logger (Logger):
@@ -75,6 +75,7 @@ class Worker:
                 User interface used to display task progress.
 
         """
+        self.__hostname = urllib.parse.urlparse(config.url).netloc
         self.__output_folder = config.output_folder
         self.__max_retries = config.max_worker_retries
         self.__urls_blacklist = config.urls_blacklist
@@ -257,15 +258,15 @@ class Worker:
         text = content.decode(errors="ignore")
 
         # Matches URL searching pattern with content
-        matches: list[str] = [
-            (match[0] if isinstance(match, (tuple, list)) else match)
-            for match in self.__search_url_pattern.findall(text)
-        ]
+        matches: list[str] = [next((m for m in match if m), "") for match in self.__search_url_pattern.findall(text)]
 
         # Normalizes URL and removes repeated
         unique_matches: set[str] = {
             self.normalize_url(urllib.parse.urljoin(url, html.unescape(match))) for match in matches
         }
+
+        # Removes URLs outside the current host
+        unique_matches = {match for match in unique_matches if urllib.parse.urlparse(match).netloc == self.__hostname}
 
         self.__logger.log(f"[READ] Ended {url}")
 
@@ -330,6 +331,11 @@ class Worker:
 
         """
         parsed = urllib.parse.urlparse(url)
+
+        # Ensure scheme exists before parsing
+        if not parsed.scheme:
+            url = "https://" + url
+            parsed = urllib.parse.urlparse(url)
 
         # Decode path (%20 -> space)
         path = urllib.parse.unquote(parsed.path)

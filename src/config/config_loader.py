@@ -1,91 +1,35 @@
 # Copyright (C) 2026 Lucas Dias
 
-"""Configuration loading module for the Website Archiver.
+"""Command-line configuration loading and parsing.
 
-This module defines the application's runtime configuration schema and
-provides a command-line based configuration loader.
+This module provides the ``ConfigLoader`` class, responsible for defining,
+parsing, and validating command-line arguments used by the website crawler.
 
-Key responsibilities:
-- Define the immutable `Config` dataclass used across the application
-- Parse and validate CLI arguments via `argparse`
-- Compile and normalize configurated values (URLs, filenames, MIME types)
-- Provide a single source of truth for crawler execution parameters
+The loader converts user-supplied CLI options into a ``ConfigDTO`` instance
+that encapsulates crawler settings.
 
-This module is designed to be imported early in the application lifecycle
-and used to bootstrap all other resources.
+It serves as the primary entry point for transforming command-line input into
+application configuration consumed by crawler components.
 """
 
 import argparse
-import dataclasses
 import pathlib
 import re
 
+from src.config.config_dto import ConfigDTO
 from src.worker import Worker
-
-
-@dataclasses.dataclass(frozen=True)
-class Config:
-    """Immutable configuration object describing crawler runtime settings.
-
-    Attributes:
-        url:
-            Root URL used as the starting point for the crawl process.
-
-        output_folder:
-            Filesystem path where downloaded website content is stored.
-
-        logs_folder:
-            Filesystem path where runtime logs are written.
-
-        urls_blacklist:
-            Tuple of compiled regular expressions representing URL patterns that
-            must be excluded from crawling.
-
-        urls_whitelist:
-            Tuple of compiled regular expressions representing URL patterns that
-            are allowed to be crawled (subject to blacklist overrides).
-
-        max_crawler_workers:
-            Maximum number of concurrent crawler worker threads/processes.
-
-        max_worker_retries:
-            Number of retry attempts allowed for failed crawling tasks.
-
-        filename_invalid_chars_pattern:
-            Regular expression used to match characters that must be sanitized
-            before being used in filesystem filenames.
-
-        search_url_pattern:
-            Regular expression used to extract URLs from textual content.
-
-        valid_textual_mime_types:
-            Tuple of MIME type prefixes/values treated as textual content for
-            link extraction and parsing.
-
-    """
-
-    url: str
-    output_folder: pathlib.Path
-    logs_folder: pathlib.Path
-    urls_blacklist: tuple[re.Pattern[str], ...]
-    urls_whitelist: tuple[re.Pattern[str], ...]
-    max_crawler_workers: int
-    max_worker_retries: int
-    filename_invalid_chars_pattern: re.Pattern[str]
-    search_url_pattern: re.Pattern[str]
-    valid_textual_mime_types: tuple[str, ...]
 
 
 class ConfigLoader:
     """Command-line configuration loader for the Website Archiver crawler.
 
     This class is responsible for defining CLI arguments, parsing user input,
-    and producing a validated immutable `Config` object used throughout the
+    and producing a validated immutable `ConfigDTO` object used throughout the
     application lifecycle.
     """
 
     def __init__(self) -> None:
-        """Initialize the CLI argument parser and immediately parse user-provided arguments into a Config object."""
+        """Initialize the CLI argument parser and immediately parse user-provided arguments into a ConfigDTO object."""
         # Argument parser for all parameters available for user via CLI
         self.__parser = argparse.ArgumentParser(
             prog="Website Archiver",
@@ -106,7 +50,7 @@ class ConfigLoader:
         self.__parser.add_argument(
             "-o",
             "--output",
-            type=str,
+            type=pathlib.Path,
             dest="output_folder",
             default="./crawled",
             help="Folder where crawled websites contents are stored.",
@@ -114,7 +58,7 @@ class ConfigLoader:
 
         self.__parser.add_argument(
             "--logs",
-            type=str,
+            type=pathlib.Path,
             dest="logs_folder",
             default="./logs",
             help="Folder where crawler execution logs are written.",
@@ -136,7 +80,7 @@ class ConfigLoader:
             "--whitelist",
             type=lambda s: tuple(re.compile(p) for p in s.split(",")),
             dest="urls_whitelist",
-            default=(r".*",),
+            default=(re.compile(r".*"),),
             help=(
                 "List of URL patterns that will be included into crawling. "
                 "Any URL matching an entry in this list will be downloaded or processed "
@@ -164,7 +108,7 @@ class ConfigLoader:
             "--invalid-chars",
             type=re.compile,
             dest="filename_invalid_chars_pattern",
-            default=r"[<>:\"|?*]",
+            default=re.compile(r"[<>:\"|?*]"),
             help=("Pattern matching characters that must be converted before being assigned to a filename."),
         )
 
@@ -173,7 +117,7 @@ class ConfigLoader:
             "--search",
             type=re.compile,
             dest="search_url_pattern",
-            default=r"\"(\/[^\"]+)\"|href=\"([^\"]+)\"",
+            default=re.compile(r"\"(\/[^\"]+)\"|href=\"([^\"]+)\""),
             help=("Pattern matching URLs inside any valid textual content found."),
         )
 
@@ -195,19 +139,19 @@ class ConfigLoader:
 
         self.__parser.add_argument(
             "--restricted-search",
-            type=bool,
+            dest="should_restrict_search",
             action="store_true",
             help="Prevents link discovery for blacklisted URLs.",
         )
 
         # All user configurations saved
-        self.__config = Config(**vars(self.__parser.parse_args()))
+        self.__config = ConfigDTO(**vars(self.__parser.parse_args()))
 
-    def get_config(self) -> Config:
+    def get_config(self) -> ConfigDTO:
         """Return the parsed crawler configuration.
 
         Returns:
-            Config:
+            ConfigDTO:
                 Immutable configuration object containing all CLI-provided
                 and default crawler settings.
 
