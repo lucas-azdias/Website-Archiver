@@ -21,8 +21,3 @@ changelog:
         - title: Other Changes 🔄
           labels:
               - "*"
-
-template: |
-    ## 🚀 Release $RESOLVED_VERSION
-
-    $CHANGES
