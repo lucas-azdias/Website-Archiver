@@ -10,6 +10,12 @@ A multithreaded website crawler designed to recursively download and archive an 
 
 The crawler operates by accepting a starting URL and recursively discovering additional internal links from downloaded content. Each fetched page is processed to extract URLs using a configurable regular expression. Valid URLs are placed into a shared work queue consumed by a pool of concurrent worker threads, each responsible for downloading content, saving it to disk, and optionally parsing further links if the response MIME type matches the configured textual types. Failed requests are retried up to a configurable limit.
 
+### Running
+
+```bash
+website_archiver <url> [options]
+```
+
 ---
 
 ## Environment
