@@ -67,7 +67,7 @@ class Crawler:
         self.__worker = Worker(config, logger, self.__ui)
 
         # Checks for existence of a host named folder inside output folder
-        if (self.__output_folder / self.__hostname).exists():
+        if (self.__output_folder / self.__hostname).exists() and not config.should_overwrite:
             self.__logger.log("Output website folder already exists.", msg_type="error", should_print=True)
             raise SystemExit(1)
 

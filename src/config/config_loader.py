@@ -138,6 +138,14 @@ class ConfigLoader:
         )
 
         self.__parser.add_argument(
+            "-O",
+            "--overwrite",
+            dest="should_overwrite",
+            action="store_true",
+            help="Overwrite existing destination files/folders if they already exist.",
+        )
+
+        self.__parser.add_argument(
             "--restricted-search",
             dest="should_restrict_search",
             action="store_true",

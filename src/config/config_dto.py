@@ -49,6 +49,12 @@ class ConfigDTO:
             Tuple of MIME type prefixes/values treated as textual content for
             link extraction and parsing.
 
+        should_overwrite:
+            When True, existing files in the output directory are overwritten
+            when saving crawled content. When False, existing files are
+            preserved and write operations may be interrupted to avoid any
+            loss of data.
+
         should_restrict_search:
             When True, the crawler does not discover or enqueue links found
             within URLs that are not allowed by the configured access rules.
@@ -67,4 +73,5 @@ class ConfigDTO:
     filename_invalid_chars_pattern: re.Pattern[str]
     search_url_pattern: re.Pattern[str]
     valid_textual_mime_types: tuple[str, ...]
+    should_overwrite: bool
     should_restrict_search: bool
