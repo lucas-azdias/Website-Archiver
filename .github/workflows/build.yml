@@ -51,21 +51,25 @@ jobs:
               shell: bash
               run: |
                   mkdir -p dist
+                  mkdir -p dist.unpacked
 
                   VERSION="${GITHUB_REF_NAME#v}"
                   OS="$(echo '${{ runner.os }}' | tr '[:upper:]' '[:lower:]')"
                   ARCH="${{ matrix.arch }}"
 
-                  EXT=$([ "${{ runner.os }}" = "Windows" ] && echo exe || echo bin)
-
-                  cp build/src.${EXT} "dist/WebsiteArchiver-${VERSION}-${OS}-${ARCH}.${EXT}"
+                  if [ "${{ runner.os }}" = "Windows" ]; then
+                    cp "build/src.exe" "dist.unpacked/website_archiver.exe"
+                    zip -r "../WebsiteArchiver-${VERSION}-${OS}-${ARCH}.zip" dist.unpacked/*
+                  else
+                    cp "build/src.bin" "dist.unpacked/website_archiver"
+                    tar -czf "dist/WebsiteArchiver-${VERSION}-${OS}-${ARCH}.tar.gz" dist.unpacked/*
+                  fi
 
             - name: Uploading artifacts
               uses: actions/upload-artifact@v7
               with:
                   name: WebsiteArchiver-${{ runner.os }}-${{ matrix.arch }}
-                  path: |
-                      dist/*
+                  path: dist/*
 
     release:
         name: Release
