@@ -61,7 +61,7 @@ jobs:
                     cp "build/src.exe" "dist.unpacked/website_archiver.exe"
                     powershell.exe -Command "
                     Compress-Archive -Path dist.unpacked\* \
-                      -DestinationPath WebsiteArchiver-${VERSION}-${OS}-${ARCH}.zip \
+                      -DestinationPath dist\WebsiteArchiver-${VERSION}-${OS}-${ARCH}.zip \
                       -Force
                     "
                   else
