@@ -28,17 +28,22 @@ jobs:
             - name: Doing checkout
               uses: actions/checkout@v6
 
+            - name: Reading Python version
+              id: pyver
+              run: |
+                  echo "version=$(cat .python-version)" >> "$GITHUB_OUTPUT"
+
             - name: Setting up Python
-              uses: actions/setup-python@v6
+              uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6.3.0
               with:
-                  python-version: 3.12
+                  python-version: ${{ steps.pyver.outputs.version }}
                   architecture: ${{ matrix.arch }}
 
             - name: Installing `uv`
               run: pip install uv
 
             - name: Syncing dependencies
-              run: uv sync
+              run: uv sync --frozen
 
             - name: Compiling
               uses: Nuitka/Nuitka-Action@v1.4
