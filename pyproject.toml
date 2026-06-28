@@ -3,6 +3,8 @@ name = "website-archiver"
 version = "0.1.0"
 description = "A multithreaded website archiver"
 readme = "README.md"
+license = "MIT"
+license-files = ["LICENSE"]
 requires-python = ">=3.14"
 dependencies = [
     "requests>=2.34.2",
