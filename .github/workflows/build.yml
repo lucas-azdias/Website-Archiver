@@ -34,11 +34,11 @@ jobs:
                   python-version: 3.12
                   architecture: ${{ matrix.arch }}
 
-            - name: Installing dependencies
-              run: |
-                  pip install uv
-                  uv export --no-dev -o requirements.txt
-                  pip install -r requirements.txt
+            - name: Installing `uv`
+              run: pip install uv
+
+            - name: Syncing dependencies
+              run: uv sync
 
             - name: Compiling
               uses: Nuitka/Nuitka-Action@v1.4
